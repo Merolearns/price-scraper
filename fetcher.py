@@ -1,6 +1,8 @@
 """HTTP fetching with manners: retries, rate limiting, robots.txt."""
 
+import json
 import time
+import urllib.request
 from urllib import robotparser
 from urllib.parse import urlparse
 
@@ -14,6 +16,7 @@ USER_AGENT = (
 )
 
 DEFAULT_DELAY = 5.0  # seconds between requests to the same domain
+ROBOTS_CACHE_TTL = 24 * 3600  # re-fetch robots.txt at most once a day per domain
 
 
 class RobotsDenied(Exception):
@@ -27,10 +30,12 @@ class PoliteFetcher:
     hit and spaces requests out accordingly.
     """
 
-    def __init__(self, delay=DEFAULT_DELAY, retries=3, ignore_robots=False):
+    def __init__(self, delay=DEFAULT_DELAY, retries=3, ignore_robots=False,
+                 robots_cache="robots-cache.json"):
         self.delay = delay
         self.retries = retries
         self.ignore_robots = ignore_robots
+        self.robots_cache = robots_cache
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": USER_AGENT})
         self._last_hit = {}  # domain -> timestamp of last request
@@ -72,12 +77,51 @@ class PoliteFetcher:
         """True if robots.txt permits fetching the URL (or can't be read)."""
         parser = self._robots.get(domain)
         if parser is None:
-            # TODO: cache robots.txt across runs for 24h instead of re-fetching
-            parser = robotparser.RobotFileParser()
-            try:
-                parser.set_url(f"https://{domain}/robots.txt")
-                parser.read()
-            except Exception:
+            body = self._robots_body(domain)
+            if body is None:
                 return True  # no robots.txt served -> nothing to obey
+            parser = robotparser.RobotFileParser()
+            parser.set_url(f"https://{domain}/robots.txt")
+            parser.parse(body.splitlines())
             self._robots[domain] = parser
         return parser.can_fetch(USER_AGENT, url)
+
+    def _robots_body(self, domain):
+        """robots.txt text for a domain, cached on disk for 24h across runs."""
+        cache = _load_json(self.robots_cache)
+        entry = cache.get(domain)
+        if entry and time.time() - entry.get("fetched_at", 0) < ROBOTS_CACHE_TTL:
+            return entry.get("body")
+
+        try:
+            req = urllib.request.Request(
+                f"https://{domain}/robots.txt",
+                headers={"User-Agent": USER_AGENT},
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                body = resp.read().decode("utf-8", errors="replace")
+        except Exception:
+            return None  # can't read it -> nothing to obey
+
+        cache[domain] = {"fetched_at": time.time(), "body": body}
+        _save_json(self.robots_cache, cache)
+        return body
+
+
+def _load_json(path):
+    """Read a JSON file, {} when missing or unreadable."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _save_json(path, data):
+    """Write a JSON file; silently skip on failure (cache is optional)."""
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(data, fh)
+    except OSError:
+        pass  # cache is a nice-to-have; never break a scrape over it

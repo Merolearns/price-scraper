@@ -35,7 +35,8 @@ Scraping other people's sites comes with some responsibility, so this:
 - waits a few seconds between requests to the same domain (default 5s,
   adjustable with `--delay`),
 - honors `robots.txt` by default (there's an `--ignore-robots` flag, but I
-  only use it on sites that clearly tolerate it),
+  only use it on sites that clearly tolerate it), and caches each domain's
+  robots.txt for 24 hours so repeat runs don't re-fetch it,
 - retries transient failures with exponential backoff instead of hammering,
 - identifies itself with a normal browser user agent.
 
