@@ -22,6 +22,40 @@ def load_config(path):
     return data["sites"] if isinstance(data, dict) else data
 
 
+def validate_sites(sites):
+    """Check config entries before the first request goes out.
+
+    A typo in sites.json used to die mid-run with a bare KeyError.
+    This fails fast with the site name and the missing key instead.
+    Raises ValueError on the first broken entry.
+    """
+    if not isinstance(sites, list) or not sites:
+        raise ValueError("config must hold a non-empty list of sites")
+    seen = set()
+    for i, site in enumerate(sites):
+        if not isinstance(site, dict):
+            raise ValueError(
+                f"site #{i + 1}: expected an object, got {type(site).__name__}"
+            )
+        name = site.get("name")
+        if not name:
+            raise ValueError(f"site #{i + 1}: missing required 'name'")
+        for key in ("url", "price_selector"):
+            if not site.get(key):
+                raise ValueError(f"site {name!r}: missing required '{key}'")
+        if name in seen:
+            raise ValueError(f"site {name!r}: duplicate site name")
+        seen.add(name)
+        threshold = site.get("alert_below")
+        if threshold is not None:
+            try:
+                float(threshold)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"site {name!r}: alert_below {threshold!r} is not a number"
+                )
+
+
 def extract_price(html, price_selector, title_selector=None):
     """Pull price (and optional title) out of a page with CSS selectors."""
     soup = BeautifulSoup(html, "html.parser")
@@ -42,6 +76,7 @@ def extract_price(html, price_selector, title_selector=None):
 
 def cmd_check(args):
     sites = load_config(args.config)
+    validate_sites(sites)
     fetcher = PoliteFetcher(delay=args.delay, ignore_robots=args.ignore_robots)
 
     failures = 0
