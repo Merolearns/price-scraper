@@ -1,6 +1,35 @@
 import pytest
 
-from scraper import validate_sites
+from scraper import load_config, validate_sites
+
+
+def test_load_config_missing_file(tmp_path):
+    with pytest.raises(ValueError, match="not found"):
+        load_config(str(tmp_path / "sites.json"))
+
+
+def test_load_config_bad_json(tmp_path):
+    bad = tmp_path / "sites.json"
+    bad.write_text("{not json")
+    with pytest.raises(ValueError, match="not valid JSON"):
+        load_config(str(bad))
+
+
+def test_load_config_dict_without_sites_key(tmp_path):
+    cfg = tmp_path / "sites.json"
+    cfg.write_text('{"_note": "no sites here"}')
+    with pytest.raises(ValueError, match="no 'sites' key"):
+        load_config(str(cfg))
+
+
+def test_load_config_dict_and_list_forms(tmp_path):
+    cfg = tmp_path / "sites.json"
+    cfg.write_text('{"sites": [{"name": "a", "url": "https://example.com", '
+                   '"price_selector": ".p"}]}')
+    assert load_config(str(cfg))[0]["name"] == "a"
+    cfg.write_text('[{"name": "b", "url": "https://example.com", '
+                   '"price_selector": ".p"}]')
+    assert load_config(str(cfg))[0]["name"] == "b"
 
 
 def good_site(**overrides):

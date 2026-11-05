@@ -17,9 +17,26 @@ log = logging.getLogger("price-scraper")
 
 
 def load_config(path):
-    with open(path, encoding="utf-8") as fh:
-        data = json.load(fh)
-    return data["sites"] if isinstance(data, dict) else data
+    """Read the config file; fail with a plain-English error, not a traceback.
+
+    A missing sites.json used to die with a bare FileNotFoundError, bad JSON
+    with a JSONDecodeError, and a dict without a "sites" key with a KeyError.
+    """
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except FileNotFoundError:
+        raise ValueError(
+            f"config file {path!r} not found -- copy sites.example.json "
+            f"to {path} and fill in real product pages"
+        ) from None
+    except json.JSONDecodeError as e:
+        raise ValueError(f"config file {path!r} is not valid JSON: {e}") from None
+    if isinstance(data, dict):
+        if "sites" not in data:
+            raise ValueError(f"config file {path!r} has no 'sites' key")
+        return data["sites"]
+    return data
 
 
 def validate_sites(sites):
@@ -75,8 +92,12 @@ def extract_price(html, price_selector, title_selector=None):
 
 
 def cmd_check(args):
-    sites = load_config(args.config)
-    validate_sites(sites)
+    try:
+        sites = load_config(args.config)
+        validate_sites(sites)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     fetcher = PoliteFetcher(delay=args.delay, ignore_robots=args.ignore_robots)
 
     failures = 0
