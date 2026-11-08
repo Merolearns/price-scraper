@@ -21,9 +21,23 @@ def load_history(name, directory=DEFAULT_DIR):
         return []
     try:
         with open(path, encoding="utf-8") as fh:
-            return json.load(fh)
+            data = json.load(fh)
     except (json.JSONDecodeError, OSError):
         return []  # corrupt file: start fresh rather than crash the run
+    if not isinstance(data, list):
+        return []  # valid JSON, wrong shape: same treatment as corrupt
+    # A hand-edited file can hold entries missing 'price' or with junk in
+    # it; drop those rows instead of crashing on them in last_price().
+    return [entry for entry in data if _is_entry(entry)]
+
+
+def _is_entry(entry):
+    """True if entry looks like a history record we wrote ourselves."""
+    return (
+        isinstance(entry, dict)
+        and isinstance(entry.get("price"), (int, float))
+        and isinstance(entry.get("timestamp"), str)
+    )
 
 
 def append_price(name, price, directory=DEFAULT_DIR):
