@@ -1,0 +1,212 @@
+/* price-scraper — quiet price-tracking console look.
+   Light background, dark ink, one restrained steel-blue accent,
+   tabular numbers for prices. Green means the price went down (good
+   here), red means it went up. Adapted from the logwatch house style. */
+
+:root {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --accent: #2f5d8a;
+  --accent-dark: #244a6e;
+  --accent-soft: #eef3f8;
+  --red: #b91c1c;
+  --red-soft: #fef2f2;
+  --green: #15803d;
+  --green-soft: #f0fdf4;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.page { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; }
+
+/* ---------- header ---------- */
+
+header { margin-bottom: 28px; }
+header h1 { font-size: 2.2rem; margin: 0 0 8px; letter-spacing: -0.02em; }
+.subtitle { color: var(--muted); font-size: 1.02rem; max-width: 640px; margin: 0; line-height: 1.6; }
+header nav { margin-top: 14px; }
+header nav a { color: var(--accent-dark); font-weight: 600; text-decoration: none; font-size: 0.92rem; }
+header nav a:hover { text-decoration: underline; }
+
+/* ---------- cards & alerts ---------- */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px 32px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  margin-bottom: 24px;
+}
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.card-head .section-title { margin-bottom: 0; }
+.section-title { font-size: 1.15rem; margin: 0 0 16px; }
+
+.alert {
+  border-radius: 12px;
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.alert-error { background: var(--red-soft); border: 1px solid #fecaca; color: #991b1b; }
+
+.empty {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+.empty a { color: var(--accent-dark); font-weight: 600; }
+
+/* ---------- check results ---------- */
+
+.results-card { background: var(--accent-soft); }
+.results { margin: 0; padding-left: 20px; line-height: 1.7; }
+.results li { margin-bottom: 4px; }
+.result-drop { color: var(--green); }
+.result-below-target { color: var(--green); }
+.result-error, .result-skipped { color: var(--red); }
+
+/* ---------- stat cards ---------- */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+.stat-value { display: block; font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; }
+.stat-value-small { font-size: 1.05rem; font-weight: 600; word-break: break-all; }
+.stat-label { display: block; color: var(--muted); font-size: 0.88rem; margin-top: 4px; }
+
+/* ---------- tables ---------- */
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { background: #f1f5f9; font-weight: 700; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: #f8fafc; }
+td.amount, th.amount { text-align: right; font-variant-numeric: tabular-nums; }
+td a { color: var(--accent-dark); font-weight: 600; text-decoration: none; }
+td a:hover { text-decoration: underline; }
+
+/* ---------- prices ---------- */
+
+.price-down { color: var(--green); font-weight: 700; }
+.price-up { color: var(--red); font-weight: 700; }
+.big-price {
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.price-meta { color: var(--muted); font-size: 0.95rem; margin: 8px 0 20px; }
+
+/* ---------- charts ---------- */
+
+.sparkline { display: block; }
+.chart-wrap { margin: 24px 0; }
+.chart { width: 100%; height: 200px; }
+.chart-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-top: 6px;
+}
+
+/* ---------- monospace ---------- */
+
+.mono { font-family: var(--mono); font-size: 0.88em; }
+code { font-family: var(--mono); font-size: 0.88em; background: #f1f5f9; padding: 1px 5px; border-radius: 5px; }
+
+/* ---------- forms ---------- */
+
+.field { margin-bottom: 18px; }
+.field label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; }
+.field input[type="text"],
+.field input[type="url"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: 0.95rem inherit;
+}
+.field input[type="text"]:focus,
+.field input[type="url"]:focus,
+.field textarea:focus { outline: 2px solid #b8cfe4; border-color: var(--accent); }
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: 0.85rem var(--mono);
+  resize: vertical;
+  line-height: 1.5;
+}
+.field-inline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.field-inline label { margin-bottom: 0; }
+.field-inline input[type="text"] { width: 160px; }
+.field-hint { color: var(--muted); font-size: 0.85rem; margin: 6px 0 0; line-height: 1.5; }
+.field-hint a { color: var(--accent-dark); font-weight: 600; }
+.form-actions { display: flex; gap: 12px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
+
+.btn {
+  display: inline-block;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 22px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-dark); }
+.btn-ghost { background: #f1f5f9; color: var(--ink); border: 1px solid var(--line); }
+.btn-ghost:hover { background: #e2e8f0; }
+.btn-small { padding: 7px 14px; font-size: 0.85rem; background: #f1f5f9; color: var(--ink); border: 1px solid var(--line); }
+.btn-small:hover { background: #e2e8f0; }
+
+/* ---------- misc ---------- */
+
+.checks { margin: 0; padding-left: 20px; line-height: 1.7; }
+.checks li { margin-bottom: 8px; }
+.io-hint { color: var(--muted); font-size: 0.88rem; line-height: 1.5; margin: 16px 0 0; }
+.io-hint a { color: var(--accent-dark); font-weight: 600; }
+.muted { color: var(--muted); }
+
+@media (max-width: 900px) {
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .card { padding: 22px 20px; }
+}
+@media (max-width: 560px) {
+  .stat-grid { grid-template-columns: 1fr; }
+  .big-price { font-size: 2.2rem; }
+}

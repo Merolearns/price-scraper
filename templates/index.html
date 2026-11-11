@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>price-scraper — watch product pages for price drops</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>price-scraper</h1>
+    <p class="subtitle">Watch product pages and get told when the price drops.
+      The dashboard below lists every product in <code>sites.json</code> with
+      its latest recorded price and history. Checking a product fetches the
+      real page, pulls the price out with its CSS selector, and records it
+      in <code>history/</code> — the same path the command line uses.</p>
+    <nav>
+      <a href="{{ url_for('test_selector') }}">Test a selector &rarr;</a>
+    </nav>
+  </header>
+
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  {% if results %}
+  <div class="card results-card">
+    <h2 class="section-title">Check results</h2>
+    <ul class="results">
+      {% for r in results %}
+      <li class="result-{{ r.status }}"><strong>{{ r.name }}</strong> &mdash; {{ r.message }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <span class="stat-value">{{ stats.tracked }}</span>
+      <span class="stat-label">products tracked</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value">{{ stats.drops }}</span>
+      <span class="stat-label">price drops found</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value">{{ stats.below_target }}</span>
+      <span class="stat-label">below target price</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value stat-value-small">{{ stats.last_check or "never" }}</span>
+      <span class="stat-label">last check</span>
+    </div>
+  </div>
+
+  {% if config_missing %}
+  <section class="card">
+    <h2 class="section-title">No products tracked yet</h2>
+    <p class="empty">There is no <code>sites.json</code> here yet. Copy
+      <code>sites.example.json</code> to <code>sites.json</code> and fill in
+      real product pages, or add your first product with the form below.</p>
+  </section>
+  {% elif not rows %}
+  <section class="card">
+    <h2 class="section-title">No products tracked yet</h2>
+    <p class="empty"><code>sites.json</code> exists but holds no sites.
+      Add your first product with the form below.</p>
+  </section>
+  {% else %}
+  <section class="card">
+    <div class="card-head">
+      <h2 class="section-title">Tracked products</h2>
+      <form action="{{ url_for('check_all') }}" method="post">
+        <button type="submit" class="btn btn-primary">Check all</button>
+      </form>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th class="amount">Current</th>
+            <th class="amount">Previous</th>
+            <th class="amount">Change</th>
+            <th class="amount">Alert below</th>
+            <th>History</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td><a href="{{ url_for('product_detail', name=row.name) }}">{{ row.name }}</a></td>
+            <td class="amount">{% if row.current is not none %}${{ "%.2f"|format(row.current) }}{% else %}&mdash;{% endif %}</td>
+            <td class="amount">{% if row.previous is not none %}${{ "%.2f"|format(row.previous) }}{% else %}&mdash;{% endif %}</td>
+            <td class="amount {% if row.change is not none and row.change < 0 %}price-down{% elif row.change is not none and row.change > 0 %}price-up{% endif %}">
+              {% if row.change is not none %}{{ "%+.2f"|format(row.change) }}{% else %}&mdash;{% endif %}
+            </td>
+            <td class="amount">{% if row.alert_below is not none %}${{ "%.2f"|format(row.alert_below) }}{% else %}&mdash;{% endif %}</td>
+            <td>
+              {% if row.sparkline %}
+              <svg class="sparkline" width="120" height="36" viewBox="0 0 120 36" preserveAspectRatio="none" aria-label="price history for {{ row.name }}">
+                <polyline points="{{ row.sparkline }}" fill="none" stroke="#2f5d8a" stroke-width="1.5"/>
+              </svg>
+              {% else %}
+              <span class="muted">no history yet</span>
+              {% endif %}
+            </td>
+            <td>
+              <form action="{{ url_for('check_one', name=row.name) }}" method="post">
+                <button type="submit" class="btn btn-small">Check now</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="io-hint">A drop is good here: green means the price went down
+      since the last check, red means it went up. Prices are recorded in
+      <code>history/</code> exactly like the <code>check</code> command does.</p>
+  </section>
+  {% endif %}
+
+  <section class="card">
+    <h2 class="section-title">Add a product</h2>
+    <form action="{{ url_for('add_product') }}" method="post">
+      <div class="field">
+        <label for="name">Product name</label>
+        <input type="text" id="name" name="name" required placeholder="Headphones X100">
+      </div>
+      <div class="field">
+        <label for="url">Product URL</label>
+        <input type="url" id="url" name="url" required placeholder="https://example.com/products/headphones-x100">
+      </div>
+      <div class="field">
+        <label for="price_selector">CSS selector for the price element</label>
+        <input type="text" id="price_selector" name="price_selector" required placeholder=".product-price">
+        <p class="field-hint">Find it in the page's dev tools: inspect the price element and copy its selector. Not sure it works? Try it on the <a href="{{ url_for('test_selector') }}">selector tester</a> first.</p>
+      </div>
+      <div class="field">
+        <label for="title_selector">CSS selector for the title (optional)</label>
+        <input type="text" id="title_selector" name="title_selector" placeholder="h1.product-title">
+      </div>
+      <div class="field field-inline">
+        <label for="alert_below">Alert when the price drops below</label>
+        <input type="text" id="alert_below" name="alert_below" placeholder="149.99">
+        <span class="field-hint">(optional, dollars)</span>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Add product</button>
+      </div>
+    </form>
+  </section>
+</div>
+</body>
+</html>

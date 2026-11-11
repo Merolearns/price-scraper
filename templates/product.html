@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ site.name }} — price-scraper</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="page">
+  <header>
+    <nav><a href="{{ url_for('index') }}">&larr; All products</a></nav>
+    <h1>{{ site.name }}</h1>
+    <p class="subtitle"><a href="{{ site.url }}" class="mono">{{ site.url }}</a></p>
+  </header>
+
+  <section class="card">
+    {% if current is not none %}
+    <div class="big-price">${{ "%.2f"|format(current) }}</div>
+    <p class="price-meta">
+      {% if previous is not none %}
+        {% if current < previous %}
+        <span class="price-down">down ${{ "%.2f"|format(previous - current) }} from ${{ "%.2f"|format(previous) }}</span>
+        {% elif current > previous %}
+        <span class="price-up">up ${{ "%.2f"|format(current - previous) }} from ${{ "%.2f"|format(previous) }}</span>
+        {% else %}
+        unchanged from ${{ "%.2f"|format(previous) }}
+        {% endif %}
+      {% else %}
+      first price recorded
+      {% endif %}
+      {% if site.alert_below is not none %}
+      &middot; alert when below ${{ "%.2f"|format(site.alert_below) }}
+      {% endif %}
+    </p>
+    {% else %}
+    <p class="empty">No price recorded yet — use "Check now" on the dashboard to fetch this product for the first time.</p>
+    {% endif %}
+
+    {% if chart_points %}
+    <div class="chart-wrap">
+      <svg class="chart" viewBox="0 0 600 200" preserveAspectRatio="none" aria-label="price history chart for {{ site.name }}">
+        <polyline points="{{ chart_points }}" fill="none" stroke="#2f5d8a" stroke-width="2"/>
+      </svg>
+      <div class="chart-labels">
+        <span>high ${{ "%.2f"|format(chart_high) }}</span>
+        <span>low ${{ "%.2f"|format(chart_low) }}</span>
+      </div>
+    </div>
+    {% endif %}
+
+    <form action="{{ url_for('check_one', name=site.name) }}" method="post">
+      <button type="submit" class="btn btn-primary">Check now</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Price history</h2>
+    {% if history_rows %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Checked at (UTC)</th><th class="amount">Price</th><th class="amount">Change</th></tr>
+        </thead>
+        <tbody>
+          {% for row in history_rows %}
+          <tr>
+            <td class="mono">{{ row.timestamp }}</td>
+            <td class="amount">${{ "%.2f"|format(row.price) }}</td>
+            <td class="amount">
+              {% if row.change is none %}
+              &mdash;
+              {% else %}
+              <span class="{% if row.change < 0 %}price-down{% elif row.change > 0 %}price-up{% endif %}">{{ "%+.2f"|format(row.change) }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty">Nothing recorded yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">How this product is tracked</h2>
+    <ul class="checks">
+      <li><strong>Price selector:</strong> <code>{{ site.price_selector }}</code></li>
+      {% if site.title_selector %}
+      <li><strong>Title selector:</strong> <code>{{ site.title_selector }}</code></li>
+      {% endif %}
+      {% if site.alert_below is not none %}
+      <li><strong>Alert:</strong> when the price drops to ${{ "%.2f"|format(site.alert_below) }} or below.</li>
+      {% else %}
+      <li><strong>Alert:</strong> none set — any drop from the last recorded price is reported.</li>
+      {% endif %}
+    </ul>
+  </section>
+</div>
+</body>
+</html>

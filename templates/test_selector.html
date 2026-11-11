@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test a selector — price-scraper</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="page">
+  <header>
+    <nav><a href="{{ url_for('index') }}">&larr; Dashboard</a></nav>
+    <h1>Test a selector</h1>
+    <p class="subtitle">Paste a chunk of a product page's HTML and the CSS
+      selector you want to use for the price. This runs the real
+      <code>extract_price</code> from the scraper — the same code the
+      <code>check</code> command uses — and shows what it pulls out, or the
+      real error when the selector matches nothing.</p>
+  </header>
+
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  {% if result %}
+  <div class="card results-card">
+    <h2 class="section-title">Extracted price</h2>
+    <div class="big-price">${{ "%.2f"|format(result.price) }}</div>
+    {% if result.title %}
+    <p class="price-meta">Title: {{ result.title }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <section class="card">
+    <h2 class="section-title">Try it</h2>
+    <form action="{{ url_for('test_selector') }}" method="post">
+      <div class="field">
+        <label for="html">Page HTML</label>
+        <textarea id="html" name="html" rows="12" spellcheck="false" placeholder='<span class="product-price">$24.99</span>'>{{ html }}</textarea>
+      </div>
+      <div class="field">
+        <label for="selector">Price selector</label>
+        <input type="text" id="selector" name="selector" value="{{ selector }}" placeholder=".product-price">
+      </div>
+      <div class="field">
+        <label for="title_selector">Title selector (optional)</label>
+        <input type="text" id="title_selector" name="title_selector" value="{{ title_selector or '' }}" placeholder="h1.product-title">
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Extract price</button>
+      </div>
+    </form>
+  </section>
+</div>
+</body>
+</html>
