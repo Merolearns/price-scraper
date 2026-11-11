@@ -28,6 +28,39 @@ browser's dev tools, inspect the price element, and copy its selector.
 Retailers change their markup sometimes, so if a site starts failing, the
 selector probably needs updating.
 
+## Web UI
+
+The same scraper behind a dashboard, for when you'd rather look at prices
+than read terminal output:
+
+```bash
+pip install -r requirements.txt
+python app.py
+# open http://127.0.0.1:5000
+```
+
+The dashboard lists every product in `sites.json` with its latest price,
+the previous price, the change (green when the price went down, red when
+it went up), and a small sparkline of its history. Each product has a
+"Check now" button, there's a "Check all" button, and each product links
+to a detail page with a full price chart and a timestamped history table.
+Checking from the web runs the exact same path as `python scraper.py
+check` — the real fetch, the same selectors, results recorded in
+`history/` — it just doesn't wait 5 seconds between requests.
+
+There's also an add-product form on the dashboard (name, URL, price
+selector, optional title selector and alert threshold) and a
+`/test-selector` page: paste a chunk of a product page's HTML and a CSS
+selector, and it runs the real `extract_price` on it and shows what comes
+out. That's the quick way to check a selector before adding the product —
+for example, pasting `<span class="product-price">$24.99</span>` with
+selector `.product-price` returns $24.99.
+
+When `sites.json` doesn't exist yet, the dashboard says so plainly and
+points you at the add form (or copy `sites.example.json` to `sites.json`
+as in the setup above). The command line in `scraper.py` is untouched and
+still works the same way.
+
 ## Being polite about scraping
 
 Scraping other people's sites comes with some responsibility, so this:
