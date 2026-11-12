@@ -48,7 +48,7 @@ def _normalize_decimal(number):
             body = "".join(parts[:-1]) + "." + parts[-1]  # decimal: 24,99
     elif has_dot:
         parts = body.split(".")
-        if len(parts) == 2 and len(parts[1]) == 3 and len(parts[0]) <= 3:
-            body = "".join(parts)                 # thousands: 1.299
+        if len(parts[0]) <= 3 and all(len(p) == 3 for p in parts[1:]):
+            body = "".join(parts)                 # thousands: 1.299, 1.299.000
 
     return ("-" if negative else "") + body

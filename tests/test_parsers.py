@@ -18,6 +18,7 @@ from parsers import parse_price
     ("$0.99", 0.99),
     ("24,99", 24.99),            # bare EU decimal
     ("1.299", 1299.00),          # EU thousands
+    ("€1.299.000", 1299000.00),  # EU thousands, several groups
 ])
 def test_parse_price(raw, expected):
     assert parse_price(raw) == pytest.approx(expected)
