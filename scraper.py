@@ -172,6 +172,14 @@ def cmd_add(args):
             print(f"ignoring invalid alert threshold {alert_raw!r}")
 
     data["sites"].append(site)
+    try:
+        # The web form validates before saving, but this prompt never did --
+        # a typo'd URL or a duplicate name landed in sites.json and only
+        # broke the next `check` run. Fail here, before writing anything.
+        validate_sites(data["sites"])
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     with open(config_path, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2)
     print(f"added {name!r} to {config_path}")
