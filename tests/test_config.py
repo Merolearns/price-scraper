@@ -80,3 +80,29 @@ def test_string_alert_below_is_fine():
 def test_non_dict_entry_rejected():
     with pytest.raises(ValueError, match="expected an object"):
         validate_sites(["https://example.com"])
+
+
+def test_url_without_scheme_rejected():
+    # A bare domain used to pass validation and only fail at check time,
+    # inside the fetcher, with an error that never named the bad URL.
+    with pytest.raises(ValueError, match="not a valid http\\(s\\) URL"):
+        validate_sites([good_site(url="example.com/w")])
+
+
+def test_url_with_wrong_scheme_rejected():
+    with pytest.raises(ValueError, match="not a valid http\\(s\\) URL"):
+        validate_sites([good_site(url="htp://example.com/w")])
+
+
+def test_url_without_host_rejected():
+    with pytest.raises(ValueError, match="not a valid http\\(s\\) URL"):
+        validate_sites([good_site(url="https:///w")])
+
+
+def test_non_string_url_rejected():
+    with pytest.raises(ValueError, match="not a valid http\\(s\\) URL"):
+        validate_sites([good_site(url=123)])
+
+
+def test_plain_http_url_is_fine():
+    validate_sites([good_site(url="http://example.com/w")])

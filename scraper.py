@@ -6,6 +6,7 @@ import json
 import logging
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 
@@ -60,6 +61,17 @@ def validate_sites(sites):
         for key in ("url", "price_selector"):
             if not site.get(key):
                 raise ValueError(f"site {name!r}: missing required '{key}'")
+        # A bare domain ("example.com/w") or a typo'd scheme ("htp://...")
+        # used to pass validation and only die at check time, inside the
+        # fetcher, with a requests error that never named the bad URL.
+        url = site["url"]
+        parsed = urlparse(url) if isinstance(url, str) else None
+        if parsed is None or parsed.scheme not in ("http", "https") \
+                or not parsed.netloc:
+            raise ValueError(
+                f"site {name!r}: url {url!r} is not a valid http(s) URL -- "
+                f"include the scheme, e.g. https://example.com/product"
+            )
         if name in seen:
             raise ValueError(f"site {name!r}: duplicate site name")
         seen.add(name)
