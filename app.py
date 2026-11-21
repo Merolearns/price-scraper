@@ -224,7 +224,22 @@ def add_product():
                 status=400,
             )
 
-    sites = _load_sites()
+    # A broken sites.json used to be read as "no sites yet" and then
+    # overwritten with just the new product, silently wiping every
+    # tracked product. Refuse instead -- the dashboard still loads
+    # (it degrades to an empty list), but nothing is written here.
+    if CONFIG.exists():
+        try:
+            sites = load_config(str(CONFIG))
+            if not isinstance(sites, list):
+                raise ValueError(f"config file {str(CONFIG)!r} has no 'sites' list")
+        except ValueError as exc:
+            return _render_index(
+                error=f"sites.json is broken: {exc} — fix it before adding a product.",
+                status=400,
+            )
+    else:
+        sites = []
     try:
         validate_sites(sites + [site])
     except ValueError as exc:

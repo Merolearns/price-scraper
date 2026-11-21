@@ -58,7 +58,9 @@ selector `.product-price` returns $24.99.
 
 When `sites.json` doesn't exist yet, the dashboard says so plainly and
 points you at the add form (or copy `sites.example.json` to `sites.json`
-as in the setup above). The command line in `scraper.py` is untouched and
+as in the setup above). If `sites.json` is broken instead — bad JSON, or
+no `sites` key — the add form refuses to save rather than overwriting
+your tracked products with a one-item file. The command line in `scraper.py` is untouched and
 still works the same way.
 
 ## Being polite about scraping

@@ -115,6 +115,30 @@ def test_add_product_duplicate_rejected(client, tmp_path):
     assert len(saved["sites"]) == 1  # nothing was written
 
 
+def test_add_product_broken_config_not_overwritten(client, tmp_path):
+    (tmp_path / "sites.json").write_text("{not json")
+    resp = client.post("/add", data={
+        "name": "Gadget",
+        "url": "https://example.com/g",
+        "price_selector": ".price",
+    })
+    assert resp.status_code == 400
+    assert b"sites.json is broken" in resp.data
+    assert (tmp_path / "sites.json").read_text() == "{not json"
+
+
+def test_add_product_config_without_sites_key_not_overwritten(client, tmp_path):
+    (tmp_path / "sites.json").write_text('{"_note": "no sites here"}')
+    resp = client.post("/add", data={
+        "name": "Gadget",
+        "url": "https://example.com/g",
+        "price_selector": ".price",
+    })
+    assert resp.status_code == 400
+    assert b"sites.json is broken" in resp.data
+    assert (tmp_path / "sites.json").read_text() == '{"_note": "no sites here"}'
+
+
 def test_add_product_missing_url_rejected(client):
     resp = client.post("/add", data={
         "name": "Gadget",
