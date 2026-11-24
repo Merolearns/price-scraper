@@ -161,12 +161,26 @@ def cmd_add(args):
     """Walk the user through adding a site to the config file."""
     config_path = Path(args.config)
     if config_path.exists():
-        with open(config_path, encoding="utf-8") as fh:
-            data = json.load(fh)
+        try:
+            # Same rule as the web form: a broken sites.json is refused
+            # up front, with a plain-English error, instead of dying
+            # mid-run (bad JSON) or at data["sites"] (no 'sites' key)
+            # after the user has answered every prompt.
+            sites = load_config(str(config_path))
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        if not isinstance(sites, list):
+            # load_config passes a bare JSON value straight through --
+            # a string or number config has no sites to add to.
+            print(
+                f"error: config file {str(config_path)!r} has no 'sites' list",
+                file=sys.stderr,
+            )
+            return 1
+        data = {"sites": sites}
     else:
         data = {"sites": []}
-    if isinstance(data, list):
-        data = {"sites": data}
 
     name = input("Product name: ").strip()
     url = input("Product URL: ").strip()
