@@ -57,13 +57,17 @@ class PoliteFetcher:
                     raise requests.HTTPError(
                         f"transient status {resp.status_code} for {url}"
                     )
-                resp.raise_for_status()  # 4xx other than 429: no point retrying
-                self._last_hit[domain] = time.time()
-                return resp.text
             except requests.RequestException as exc:
                 last_exc = exc
                 if attempt < self.retries:
                     time.sleep(2 ** attempt)  # 1s, 2s, 4s...
+                continue
+            # 4xx other than 429: no point retrying -- this sits outside
+            # the try on purpose, so a dead page fails at once instead of
+            # being fetched (retries + 1) times with backoff in between.
+            resp.raise_for_status()
+            self._last_hit[domain] = time.time()
+            return resp.text
         raise last_exc
 
     def _wait_turn(self, domain):

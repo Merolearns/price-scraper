@@ -1,6 +1,7 @@
 import time
 
 import pytest
+import requests
 
 import fetcher
 from fetcher import PoliteFetcher
@@ -70,3 +71,47 @@ def test_unreadable_robots_allows_everything(monkeypatch, tmp_path):
     monkeypatch.setattr(fetcher.urllib.request, "urlopen", boom)
     f = PoliteFetcher(robots_cache=str(tmp_path / "robots.json"))
     assert f._allowed("https://shop.example/anything", "shop.example") is True
+
+
+class FakeHTTPResponse:
+    """Minimal stand-in for requests.Response for get() retry tests."""
+
+    def __init__(self, status_code, text=""):
+        self.status_code = status_code
+        self.text = text
+        self.url = "https://shop.example/item"
+
+    def raise_for_status(self):
+        if 400 <= self.status_code < 600:
+            raise requests.HTTPError(f"{self.status_code} error for url")
+
+
+def _fetcher_with_stub(monkeypatch, tmp_path, status_code):
+    calls = []
+
+    def fake_get(url, timeout=None):
+        calls.append(url)
+        return FakeHTTPResponse(status_code)
+
+    f = PoliteFetcher(
+        delay=0, retries=3, ignore_robots=True,
+        robots_cache=str(tmp_path / "robots.json"),
+    )
+    monkeypatch.setattr(f.session, "get", fake_get)
+    return f, calls
+
+
+def test_get_does_not_retry_404(monkeypatch, tmp_path):
+    f, calls = _fetcher_with_stub(monkeypatch, tmp_path, 404)
+    with pytest.raises(requests.HTTPError):
+        f.get("https://shop.example/gone")
+    # a dead page is not a transient failure -- one request, no backoff
+    assert len(calls) == 1
+
+
+def test_get_retries_500(monkeypatch, tmp_path):
+    monkeypatch.setattr(fetcher.time, "sleep", lambda s: None)
+    f, calls = _fetcher_with_stub(monkeypatch, tmp_path, 500)
+    with pytest.raises(requests.HTTPError):
+        f.get("https://shop.example/flaky")
+    assert len(calls) == 4  # initial try + 3 retries
