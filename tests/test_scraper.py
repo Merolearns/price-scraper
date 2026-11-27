@@ -23,6 +23,31 @@ def _run_add(monkeypatch, tmp_path, answers):
 
 def test_add_valid_site_writes_config(monkeypatch, tmp_path):
     assert _run_add(monkeypatch, tmp_path, _answers()) == 0
+
+
+class FakeFetcher:
+    """Returns fixed HTML instead of hitting the network."""
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def get(self, url):
+        return '<html><span class="price">$19.99</span></html>'
+
+
+def test_check_string_alert_below_alerts(monkeypatch, tmp_path, capsys):
+    # a string threshold ("25.00") passes validation, but the check used
+    # to compare float <= str and log the site as a failure instead of
+    # alerting -- and the dashboard 500d on the same comparison
+    config = tmp_path / "sites.json"
+    config.write_text(json.dumps({"sites": [{
+        "name": "widget", "url": "https://example.com/w",
+        "price_selector": ".price", "alert_below": "25.00"}]}))
+    monkeypatch.setattr(scraper, "PoliteFetcher", FakeFetcher)
+    monkeypatch.chdir(tmp_path)
+    args = argparse.Namespace(config=str(config), delay=0, ignore_robots=True)
+    assert scraper.cmd_check(args) == 0
+    assert "BELOW TARGET" in capsys.readouterr().out
     data = json.loads((tmp_path / "sites.json").read_text())
     assert data["sites"][0]["name"] == "widget"
 

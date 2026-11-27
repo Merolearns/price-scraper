@@ -66,6 +66,28 @@ def test_dashboard_lists_product(client, tmp_path):
     assert b"price drops found" in resp.data
 
 
+def test_dashboard_string_alert_below_does_not_500(client, tmp_path):
+    # a hand-edited sites.json can hold "25.00" as a string; the stats
+    # row compared float <= str and the whole dashboard 500d
+    _write_config(tmp_path, [_site(alert_below="25.00")])
+    from storage import append_price
+    append_price("Widget", 19.99, directory=tmp_path / "history")
+
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert b"Widget" in resp.data
+    assert b"$19.99" in resp.data
+
+
+def test_check_now_string_alert_below_alerts(client, tmp_path, monkeypatch):
+    _write_config(tmp_path, [_site(alert_below="25.00")])
+    monkeypatch.setattr(app_module, "PoliteFetcher", FakeFetcher)
+
+    resp = client.post("/check/Widget")
+    assert resp.status_code == 200
+    assert b"Below target" in resp.data
+
+
 def test_product_detail(client, tmp_path):
     _write_config(tmp_path, [_site(alert_below=15.00)])
     from storage import append_price

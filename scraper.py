@@ -36,8 +36,24 @@ def load_config(path):
     if isinstance(data, dict):
         if "sites" not in data:
             raise ValueError(f"config file {path!r} has no 'sites' key")
-        return data["sites"]
-    return data
+        sites = data["sites"]
+    else:
+        sites = data
+    if isinstance(sites, list):
+        for site in sites:
+            # A hand-edited sites.json can hold alert_below as a string
+            # ("99.99") -- validation accepts it, but the check compared
+            # float <= str and logged the site as a failure, and the
+            # dashboard 500d on the same comparison. Load it as a float
+            # here, the one place both the CLI and the web UI read the
+            # config through; a value that isn't a number is left alone
+            # for validate_sites to reject with a plain error.
+            if isinstance(site, dict) and site.get("alert_below") is not None:
+                try:
+                    site["alert_below"] = float(site["alert_below"])
+                except (TypeError, ValueError):
+                    pass
+    return sites
 
 
 def validate_sites(sites):

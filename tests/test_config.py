@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from scraper import load_config, validate_sites
@@ -30,6 +32,16 @@ def test_load_config_dict_and_list_forms(tmp_path):
     cfg.write_text('[{"name": "b", "url": "https://example.com", '
                    '"price_selector": ".p"}]')
     assert load_config(str(cfg))[0]["name"] == "b"
+
+
+def test_load_config_coerces_string_alert_below(tmp_path):
+    # a hand-edited sites.json can hold "99.99" as a string; validation
+    # accepts it, but the check compared float <= str and died per site,
+    # and the dashboard 500d on the same comparison -- load it as a float
+    cfg = tmp_path / "sites.json"
+    cfg.write_text(json.dumps({"sites": [good_site(alert_below="99.99")]}))
+    sites = load_config(str(cfg))
+    assert sites[0]["alert_below"] == 99.99
 
 
 def good_site(**overrides):
